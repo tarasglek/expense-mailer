@@ -4,4 +4,4 @@ def parse_msg(msg_text):
     m = re.match(r"\$([^ ]+) +(.*)$", msg_text)
     if not m:
         return None
-    return (m.groups()[0], m.groups()[1])
+    return {'price':m.groups()[0], 'description':m.groups()[1]}

@@ -8,7 +8,7 @@ def main(filename):
     raw_msg = open(filename).read()
     email_msg = email.message_from_string(raw_msg)
     msg = ParsedMessage(email_msg)
-    print(msg.get_body())
+    # print(msg.get_body())
     print(invoice_parser.parse_msg(msg.above_fwd_text))
     for (filename, body) in msg.attachments():
         print(msg.fwd_headers2filename(filename), len(body))

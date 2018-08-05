@@ -1,0 +1,6 @@
+lib/*
+*.pyc
+client_secret.json
+orig_msg.txt
+sample_body.txt
+sheets.json

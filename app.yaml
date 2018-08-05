@@ -18,3 +18,7 @@ handlers:
 - url: /
   static_files: index.html
   upload: index.html
+
+libraries:
+- name: ssl
+  version: latest
