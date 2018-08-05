@@ -1,23 +1,14 @@
 import sys
-
 import email
+from email_reply_parser import EmailReplyParser
+from msg_util import ParsedMessage
 
-seen_it=set()
-def dump(msg):
-    if msg in seen_it:
-        return
-    seen_it.add(msg)
-    for part in msg.walk():
-        if part.is_multipart():
-            print('walking-multipart')
-            dump(part)
-            print('end-multipart')
-        else:
-            print('blehbleh',part.get_content_type())
-            print(part.as_string())
-def main():
-    print(sys.argv)
-    msg = email.message_from_file(fp=open(sys.argv[1]))
-    dump(msg)
+def main(filename):
+    raw_msg = open(filename).read()
+    email_msg = email.message_from_string(raw_msg)
+    msg = ParsedMessage(email_msg)
+    for (filename, body) in msg.attachments():
+        print(msg.fwd_headers2filename(filename))
 
-main()
+if __name__ == "__main__":
+    main(sys.argv[1])
