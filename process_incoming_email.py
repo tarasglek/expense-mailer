@@ -18,12 +18,13 @@ import logging
 from google.appengine.ext.webapp.mail_handlers import InboundMailHandler
 import webapp2
 from google.appengine.api import mail
-import msg_util
-
+from msg_util import ParsedMessage
+import expense_tracker
 class LogSenderHandler(InboundMailHandler):
     def receive(self, mail_message):
         logging.info("Received a message from: " + mail_message.sender)
-
+        email = ParsedMessage(mail_message.original)
+        expense_tracker.try_it()
 # [END log_sender_handler]
 # [START bodies]
         plaintext_bodies = mail_message.bodies('text/plain')

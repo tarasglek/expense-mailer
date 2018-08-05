@@ -12,10 +12,10 @@ class ParsedMessage():
     Parse gmail fwded messages into part-before-fwd header + header metadata + fwded msg
     """
     def _parse_body(self):
-        (before, fwd) = self.get_body().split("---------- Forwarded message ---------\r\n", 1)
-        (fwd_headers, fwd_msg) = fwd.split('\r\n\r\n', 1)
+        (before, fwd) = self.get_body().replace("\r\n", "\n").split("---------- Forwarded message ---------\n", 1)
+        (fwd_headers, fwd_msg) = fwd.split('\n\n', 1)
         fwd_headers_dict = {}
-        for header in fwd_headers.split('\r\n'):
+        for header in fwd_headers.split('\n'):
             (key, value) = header.split(': ', 1)
             fwd_headers_dict[key] = value
         self.above_fwd_text = before.strip()
@@ -29,7 +29,8 @@ class ParsedMessage():
         for part in self._email.walk():
             content_type = part.get_content_type()
             if content_type == "text/plain" and part.get_filename() == None:
-                return part.get_payload()
+                return part.get_payload(decode=True)
+
 
     def fwd_headers2filename(self, filename):
         return '/'.join([self.fwd_headers['From'], mangle(self.fwd_headers['Subject']), self.fwd_headers['Date'], filename])
