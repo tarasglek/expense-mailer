@@ -8,7 +8,7 @@ def main(filename):
     email_msg = email.message_from_string(raw_msg)
     msg = ParsedMessage(email_msg)
     for (filename, body) in msg.attachments():
-        print(msg.fwd_headers2filename(filename))
+        print(msg.fwd_headers2filename(filename), len(body))
 
 if __name__ == "__main__":
     main(sys.argv[1])
