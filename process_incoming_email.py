@@ -22,6 +22,7 @@ from msg_util import ParsedMessage
 import expense_tracker
 import invoice_parser
 import re
+import json
 # https://github.com/olucurious/PyFCM/issues/115
 from requests_toolbelt.adapters import appengine
 appengine.monkeypatch()
@@ -31,10 +32,33 @@ class LogSenderHandler(InboundMailHandler):
         m = re.search(r"(\S+)@", mail_message.to)
         if not m:
             return
-        expense = m.groups()[0]
+        config = json.load(open('sheets.json'))
+        if config["users"].index(mail_message.sender) == -1:
+            print("Invalid user " + mail_message.sender)
+            return
+        expense_category = m.groups()[0]
         email = ParsedMessage(mail_message.original)
         parsed = invoice_parser.parse_msg(email.above_fwd_text)
 
-        expense_tracker.add_entry(expense, parsed['description'], parsed['price'])
+        sheet_link = config["sheets"][expense_category]
+        folder_id = config["folders"][expense_category]
+        hash = email.hash()
+        links = {}
+        for (filename, body) in email.attachments():
+            link = expense_tracker.upload_file(folder_id, hash + '.' + filename, body)
+            links[filename] = link
+        expense_tracker.add_entry(sheet_link, parsed['description'], parsed['price'], links, hash)
+        mail.send_mail(sender=mail_message.to,
+            to=mail_message.sender,
+            subject='Re: ' + mail_message.original['Subject'],
+            body="""
+            Added {} to
+            https://docs.google.com/spreadsheets/d/{}
+        """.format(str(parsed), sheet_link),
+            headers={
+                "References": mail_message.original.get('References', ''),
+                "In-Reply-To": mail_message.original.get('Message-ID', ''),
+            },
+        )
 
 app = webapp2.WSGIApplication([LogSenderHandler.mapping()], debug=True)

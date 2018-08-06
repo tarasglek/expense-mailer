@@ -1,4 +1,5 @@
 import re, urllib
+import hashlib
 
 def mangle(s):
     return re.sub(r"\s+", " ", re.sub(r"(%..|[+/])", " ",urllib.quote_plus(s))).strip()
@@ -40,4 +41,12 @@ class ParsedMessage():
             filename =  part.get_filename()
             if filename:
                 yield (filename, part.get_payload(decode=True))
+
+    def hash(self):
+        m = hashlib.sha256()
+        m.update(self.fwd_body)
+        for (filename, body) in self.attachments():
+            m.update(filename)
+            m.update(body)
+        return m.hexdigest()
 

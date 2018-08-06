@@ -5,19 +5,27 @@
 
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import json
+from google.oauth2 import service_account
+from apiclient.discovery import build
+import mimetypes
+import io
+from googleapiclient.http import MediaIoBaseUpload
+SCOPES = [
+    'https://spreadsheets.google.com/feeds',
+    'https://www.googleapis.com/auth/drive'
+    ]
+SERVICE_ACCOUNT_FILE = 'client_secret.json'
 
 def next_available_row(worksheet):
     str_list = filter(None, worksheet.col_values(1))  # fastest
     return str(len(str_list)+1)
 
-def add_entry(expense_category, description, price, invoices=""):
-    sheet_link = json.load(open('sheets.json'))[expense_category]
+def add_entry(sheet_link, description, price, links, uid):
+    invoices = '=' + " ".join(map(lambda x: "HYPERLINK(\"{}\", \"{}\")".format(x, links[x]), links.keys()))
+
     # use creds to create a client to interact with the Google Drive API
-    scope = ['https://spreadsheets.google.com/feeds',
-    'https://www.googleapis.com/auth/drive'
-    ]
-    creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, SCOPES)
     client = gspread.authorize(creds)
 
     # Find a workbook by name and open the first sheet
@@ -27,8 +35,56 @@ def add_entry(expense_category, description, price, invoices=""):
     # Extract and print all of the values
     next_row = next_available_row(worksheet)
     # Select a range
-    cell_list = worksheet.range('A{}:C{}'.format(next_row, next_row))
+    cell_list = worksheet.range('A{}:D{}'.format(next_row, next_row))
     cell_list[0].value = description
     cell_list[1].value = invoices
     cell_list[2].value = price
+    cell_list[3].value = uid
     worksheet.update_cells(cell_list)
+
+def drive():
+    credentials = service_account.Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    drive_service = build('drive', 'v3', credentials=credentials)
+    return drive_service
+
+def ls():
+    drive_service = drive()
+    # Call the Drive v3 API
+    page_token = None
+    while True:
+        response = drive_service.files().list(q="mimeType='application/vnd.google-apps.folder'",
+                                            spaces='drive',
+                                            fields='nextPageToken, files(id, name)',
+                                            pageToken=page_token).execute()
+        for file in response.get('files', []):
+            # Process change
+            print 'Found file: %s (%s)' % (file.get('name'), file.get('id'))
+            # prefix = file.get('name')
+        page_token = response.get('nextPageToken', None)
+        if page_token is None:
+            break
+"""
+GOogle drive api requires having a filename one can stream from..app engine doesn't have access to files
+based on example 5 in https://www.programcreek.com/python/example/103498/googleapiclient.http.MediaIoBaseUpload
+list files is useful to figure out files shared with me..to get the id
+"""
+def upload_file(parent_id, name, content):
+    fd = io.BytesIO(content)
+    mime_type = mimetypes.guess_type(name)
+    if mime_type[0] is None:
+        mime_type = "application/octet-stream"
+    media_body = MediaIoBaseUpload(fd, mimetype=mime_type,
+     chunksize=1024*1024, resumable=True)
+    body = {
+            'title': name,
+            'name': 'dir/'+name,
+            'mimeType': mime_type,
+            'parents': parent_id,
+        }
+
+    file_data = drive().files().create(
+            body=body,
+            media_body=media_body).execute()
+    print(file_data)
+    return "https://drive.google.com/file/d/" + file_data['id']

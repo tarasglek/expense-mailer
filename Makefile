@@ -5,4 +5,4 @@ freeze:
 deploy:
 	gcloud app deploy
 dev:
-	dev_appserver.py app.yaml
+	dev_appserver.py app.yaml --default_gcs_bucket_name expense-mailer.appspot.com
