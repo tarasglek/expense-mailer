@@ -20,9 +20,11 @@ def next_available_row(worksheet):
     str_list = filter(None, worksheet.col_values(1))  # fastest
     return str(len(str_list)+1)
 
-def add_entry(sheet_link, description, price, links, uid):
-    invoices = '=' + " ".join(map(lambda x: "HYPERLINK(\"{}\", \"{}\")".format(links[x], x), links.keys()))
-
+def add_entry(sheet_link, links, row):
+    documents = " ".join(map(lambda x: "HYPERLINK(\"{}\", \"{}\")".format(links[x], x), links.keys()))
+    if len(documents):
+        documents = '=' + documents
+    row['documents'] = documents
     # use creds to create a client to interact with the Google Drive API
 
     creds = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, SCOPES)
@@ -32,14 +34,19 @@ def add_entry(sheet_link, description, price, links, uid):
     # Make sure you use the right name here.
     # sheet = client.open("house expenses").sheet1
     worksheet = client.open_by_url(sheet_link).sheet1
+    col_mapping = {}
+    first_row = worksheet.row_values(1)
+    print(worksheet.row_values(1))
+    for i in range(0, len(first_row)):
+        col_mapping[first_row[i]] = i
     # Extract and print all of the values
     next_row = next_available_row(worksheet)
     # Select a range
-    cell_list = worksheet.range('A{}:D{}'.format(next_row, next_row))
-    cell_list[0].value = description
-    cell_list[1].value = invoices
-    cell_list[2].value = price
-    cell_list[3].value = uid
+    last_chr = chr(ord('A') + len(first_row) - 1)
+    cell_list = worksheet.range('A{}:{}{}'.format(next_row, last_chr, next_row))
+    print(row)
+    for key in row.keys():
+        cell_list[col_mapping[key]].value = row[key]
     worksheet.update_cells(cell_list, value_input_option='USER_ENTERED')
 
 def drive():

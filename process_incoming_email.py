@@ -62,7 +62,10 @@ class LogSenderHandler(InboundMailHandler):
         for (filename, body) in email.attachments():
             link = expense_tracker.upload_file(folder_id, hash + '.' + filename, body)
             links[filename] = link
-        expense_tracker.add_entry(sheet_link, parsed['description'], parsed['price'], links, hash)
+        parsed['contractor'] = email.fwd_headers['From']
+        parsed['date'] = email.fwd_headers['Date']
+        parsed['hash'] = hash
+        expense_tracker.add_entry(sheet_link, links, parsed)
         reply("""
                 Added {} to
                 {}
