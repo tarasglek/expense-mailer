@@ -13,11 +13,16 @@ class ParsedMessage():
     Parse gmail fwded messages into part-before-fwd header + header metadata + fwded msg
     """
     def _parse_body(self):
-        (before, fwd) = self.get_body().replace("\r\n", "\n").split("---------- Forwarded message ---------\n", 1)
+        body = self.get_body()
+        # print(body)
+        (before, fwd) = body.replace("\r\n", "\n").split("---------- Forwarded message ---------\n", 1)
         (fwd_headers, fwd_msg) = fwd.split('\n\n', 1)
         fwd_headers_dict = {}
         for header in fwd_headers.split('\n'):
-            (key, value) = header.split(': ', 1)
+            m = re.match(r"^([^ :]+): (.+)", header)
+            if not m:
+                continue
+            (key, value) = m.groups()
             fwd_headers_dict[key] = value
         self.above_fwd_text = before.strip()
         self.fwd_headers = fwd_headers_dict
