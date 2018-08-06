@@ -21,7 +21,7 @@ def next_available_row(worksheet):
     return str(len(str_list)+1)
 
 def add_entry(sheet_link, description, price, links, uid):
-    invoices = '=' + " ".join(map(lambda x: "HYPERLINK(\"{}\", \"{}\")".format(x, links[x]), links.keys()))
+    invoices = '=' + " ".join(map(lambda x: "HYPERLINK(\"{}\", \"{}\")".format(links[x], x), links.keys()))
 
     # use creds to create a client to interact with the Google Drive API
 
@@ -40,7 +40,7 @@ def add_entry(sheet_link, description, price, links, uid):
     cell_list[1].value = invoices
     cell_list[2].value = price
     cell_list[3].value = uid
-    worksheet.update_cells(cell_list)
+    worksheet.update_cells(cell_list, value_input_option='USER_ENTERED')
 
 def drive():
     credentials = service_account.Credentials.from_service_account_file(
@@ -52,6 +52,7 @@ def ls():
     drive_service = drive()
     # Call the Drive v3 API
     page_token = None
+    ret = []
     while True:
         response = drive_service.files().list(q="mimeType='application/vnd.google-apps.folder'",
                                             spaces='drive',
@@ -60,10 +61,12 @@ def ls():
         for file in response.get('files', []):
             # Process change
             print 'Found file: %s (%s)' % (file.get('name'), file.get('id'))
+            ret.append((file.get('name'), file.get('id')))
             # prefix = file.get('name')
         page_token = response.get('nextPageToken', None)
         if page_token is None:
             break
+    return ret
 """
 GOogle drive api requires having a filename one can stream from..app engine doesn't have access to files
 based on example 5 in https://www.programcreek.com/python/example/103498/googleapiclient.http.MediaIoBaseUpload
@@ -75,14 +78,13 @@ def upload_file(parent_id, name, content):
     if mime_type[0] is None:
         mime_type = "application/octet-stream"
     media_body = MediaIoBaseUpload(fd, mimetype=mime_type,
-     chunksize=1024*1024, resumable=True)
+     chunksize=256*1024, resumable=True)
     body = {
-            'title': name,
-            'name': 'dir/'+name,
+            'name': name,
             'mimeType': mime_type,
-            'parents': parent_id,
+            'parents': [parent_id],
         }
-
+    print(body)
     file_data = drive().files().create(
             body=body,
             media_body=media_body).execute()
